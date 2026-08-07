@@ -1120,9 +1120,7 @@ export function onStateChange(typeOrCb: "settings" | (() => void), cb?: () => vo
   return () => { settingsChangeListeners.delete(cb!); };
 }
 
-type ChangeType = "settings" | "teeth" | "both";
-
-function notifyStateChange(type: ChangeType = "both"){
+function notifyStateChange(type: "settings" | "both" = "both"){
   if(type === "settings" || type === "both"){
     for(const cb of settingsChangeListeners){
       try{ cb(); }
