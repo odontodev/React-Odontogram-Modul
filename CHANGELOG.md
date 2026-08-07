@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] - 2026-08-06
+
+### Added
+
+- **Consolidated settings store + typed state-change subscription.** A new
+  `UiSettings` type describes every user-facing UI preference in a single shape;
+  `getSettings()` returns a live-constructed snapshot. `onStateChange` is now
+  overloaded to accept an optional type filter:
+  ```ts
+  onStateChange(cb)               // fires on ALL changes (existing)
+  onStateChange("settings", cb)   // fires only on settings/UI-preference changes
+  ```
+  Every settings setter now fires `notifyStateChange("settings")` (previously
+  most did not notify at all) and skips notification when the value is unchanged.
+
+### Changed
+
+- **Settings setters now notify.** `setIcdasEnabled`, `setWearDetailLevel`,
+  `setDiscolorationDetailLevel`, `setSecondaryCariesMode`, `setRootCariesMode`,
+  `setRadiographicDepthMode`, `setCariesDepthEnabled`, `setNotesEnabled`,
+  `setReadOnly`, `setNumberingSystem` — and the controls-card collapse handler —
+  now call `notifyStateChange("settings")` on every effective change, so
+  subscribers (including the new typed channel) are notified.
+
 ## [2.2.2] - 2026-08-06
 
 ### Added

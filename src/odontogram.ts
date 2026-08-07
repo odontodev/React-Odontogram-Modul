@@ -905,15 +905,15 @@ export function isCardCollapsed(id: string): boolean {
 export function setCollapsedCard(id: string, collapsed: boolean): void {
   if(!VALID_CARD_IDS.has(id)) return;
   collapsedCards[id] = !!collapsed;
-  notifyStateChange();
+  notifyStateChange("settings");
 }
 export function toggleCollapsedCard(id: string): void {
   if(!VALID_CARD_IDS.has(id)) return;
   collapsedCards[id] = !collapsedCards[id];
-  notifyStateChange();
+  notifyStateChange("settings");
 }
 let icdasEnabled = false;
-export function setIcdasEnabled(value: boolean){ icdasEnabled = !!value; if(activeTooth) syncControlsFromState(toothState.get(activeTooth)); }
+export function setIcdasEnabled(value: boolean){ const next = !!value; if(next === icdasEnabled) return; icdasEnabled = next; if(activeTooth) syncControlsFromState(toothState.get(activeTooth)); notifyStateChange("settings"); }
 export function getIcdasEnabled(): boolean { return icdasEnabled; }
 // SP4 Task 5: pulp-detail level drives how the pulp control presents the pulp
 // diagnosis — "simple" (healthy/pulpitis), "aae" (4 AAE pulpDx values, default)
@@ -930,7 +930,7 @@ export function setPulpDetailLevel(value: PulpDetailLevel){
   // pick Latin vs AAE wording — the whole-mouth summary panel and every
   // per-tooth tooltip must refresh too, not just the active tooth's picker.
   // Mirrors setSurfaceNotation() below exactly (same bug class, SP16 fix).
-  notifyStateChange();
+  notifyStateChange("settings");
   for(const toothNo of ALL_TEETH){
     updateToothTooltip(toothNo);
   }
@@ -946,14 +946,20 @@ export function getPulpDetailLevel(): PulpDetailLevel { return pulpDetailLevel; 
 export type ToothDetailLevel = "simple" | "complex";
 let wearDetailLevel: ToothDetailLevel = "complex";
 export function setWearDetailLevel(value: ToothDetailLevel){
-  wearDetailLevel = value === "simple" ? "simple" : "complex";
+  const next = value === "simple" ? "simple" : "complex";
+  if(next === wearDetailLevel) return;
+  wearDetailLevel = next;
   if(activeTooth) syncControlsFromState(toothState.get(activeTooth));
+  notifyStateChange("settings");
 }
 export function getWearDetailLevel(): ToothDetailLevel { return wearDetailLevel; }
 let discolorationDetailLevel: ToothDetailLevel = "complex";
 export function setDiscolorationDetailLevel(value: ToothDetailLevel){
-  discolorationDetailLevel = value === "simple" ? "simple" : "complex";
+  const next = value === "simple" ? "simple" : "complex";
+  if(next === discolorationDetailLevel) return;
+  discolorationDetailLevel = next;
   if(activeTooth) syncControlsFromState(toothState.get(activeTooth));
+  notifyStateChange("settings");
 }
 export function getDiscolorationDetailLevel(): ToothDetailLevel { return discolorationDetailLevel; }
 
@@ -978,7 +984,7 @@ export function setSurfaceNotation(value: SurfaceNotation){
   // until the next tooth edit. notifyStateChange() fires the onStateChange
   // listeners the App uses to re-run getOdontogramSummary(); the per-tooth
   // loop mirrors the registerPlugins() pattern above.
-  notifyStateChange();
+  notifyStateChange("settings");
   for(const toothNo of ALL_TEETH){
     updateToothTooltip(toothNo);
   }
@@ -999,31 +1005,88 @@ export type RadiographicDepthMode = "off" | "threeLevel" | "detailed";
 
 let secondaryCariesMode: SecondaryCariesMode = "standard";
 export function setSecondaryCariesMode(value: SecondaryCariesMode){
-  secondaryCariesMode = (value === "simple" || value === "full") ? value : "standard";
+  const next = (value === "simple" || value === "full") ? value : "standard";
+  if(next === secondaryCariesMode) return;
+  secondaryCariesMode = next;
   if(activeTooth) syncControlsFromState(toothState.get(activeTooth));
+  notifyStateChange("settings");
 }
 export function getSecondaryCariesMode(): SecondaryCariesMode { return secondaryCariesMode; }
 
 let rootCariesMode: RootCariesMode = "simple";
 export function setRootCariesMode(value: RootCariesMode){
-  rootCariesMode = (value === "severity") ? value : "simple";
+  const next = (value === "severity") ? value : "simple";
+  if(next === rootCariesMode) return;
+  rootCariesMode = next;
   if(activeTooth) syncControlsFromState(toothState.get(activeTooth));
+  notifyStateChange("settings");
 }
 export function getRootCariesMode(): RootCariesMode { return rootCariesMode; }
 
 let radiographicDepthMode: RadiographicDepthMode = "off";
 export function setRadiographicDepthMode(value: RadiographicDepthMode){
-  radiographicDepthMode = (value === "threeLevel" || value === "detailed") ? value : "off";
+  const next = (value === "threeLevel" || value === "detailed") ? value : "off";
+  if(next === radiographicDepthMode) return;
+  radiographicDepthMode = next;
   if(activeTooth) syncControlsFromState(toothState.get(activeTooth));
+  notifyStateChange("settings");
 }
 export function getRadiographicDepthMode(): RadiographicDepthMode { return radiographicDepthMode; }
 
 let cariesDepthEnabled = true;
 export function setCariesDepthEnabled(value: boolean){
-  cariesDepthEnabled = value !== false;
+  const next = value !== false;
+  if(next === cariesDepthEnabled) return;
+  cariesDepthEnabled = next;
   if(activeTooth) syncControlsFromState(toothState.get(activeTooth));
+  notifyStateChange("settings");
 }
 export function getCariesDepthEnabled(): boolean { return cariesDepthEnabled; }
+
+// ---- Consolidated UI-settings snapshot ----
+// The `UiSettings` type describes every user-facing UI preference in a single
+// shape. `getSettings()` returns a live-constructed snapshot reading from the
+// individual module-level variables, so there is never a stale secondary copy.
+export type UiSettings = {
+  readonly numberingSystem: NumberingSystem;
+  readonly readOnly: boolean;
+  readonly notesEnabled: boolean;
+  readonly collapsedCards: Record<string, boolean>;
+  readonly icdasEnabled: boolean;
+  readonly pulpDetailLevel: PulpDetailLevel;
+  readonly wearDetailLevel: ToothDetailLevel;
+  readonly discolorationDetailLevel: ToothDetailLevel;
+  readonly surfaceNotation: SurfaceNotation;
+  readonly secondaryCariesMode: SecondaryCariesMode;
+  readonly rootCariesMode: RootCariesMode;
+  readonly radiographicDepthMode: RadiographicDepthMode;
+  readonly cariesDepthEnabled: boolean;
+  readonly perioViewMode: PerioViewMode;
+  readonly perioRowVisibility: Record<PerioRowId, boolean>;
+  readonly perioIndexNameMode: PerioIndexNameMode;
+};
+
+/** Snapshot of the current UI-settings (all user-facing preferences). */
+export function getSettings(): UiSettings {
+  return {
+    numberingSystem,
+    readOnly,
+    notesEnabled,
+    collapsedCards: { ...collapsedCards },
+    icdasEnabled,
+    pulpDetailLevel,
+    wearDetailLevel,
+    discolorationDetailLevel,
+    surfaceNotation,
+    secondaryCariesMode,
+    rootCariesMode,
+    radiographicDepthMode,
+    cariesDepthEnabled,
+    perioViewMode,
+    perioRowVisibility: { ...perioRowVisibility },
+    perioIndexNameMode,
+  };
+}
 
 let i18nUnsubscribe: (() => void) | null = null;
 
@@ -1031,30 +1094,47 @@ let i18nUnsubscribe: (() => void) | null = null;
 // Listeners are notified after any change to tooth state (edits, edentulous
 // toggle, import), so consumers like the "tooth information" panel can refresh.
 const stateChangeListeners = new Set<() => void>();
+const settingsChangeListeners = new Set<() => void>();
 
 /**
- * Subscribe to odontogram state changes. The callback runs after any tooth
- * state edit, the edentulous toggle, or an import.
+ * Subscribe to odontogram state changes. Use the overloaded signatures to
+ * filter by change type:
  *
- * @param cb - Callback invoked on each change.
+ * ```ts
+ * onStateChange(cb)               // fires on ALL changes (existing behaviour)
+ * onStateChange("settings", cb)   // fires only on settings/UI-preference changes
+ * ```
+ *
+ * @param typeOrCb - Change-type filter (`"settings"`) or a bare callback.
+ * @param cb - Callback invoked on each matching change.
  * @returns An unsubscribe function.
  */
-export function onStateChange(cb: () => void): () => void {
-  stateChangeListeners.add(cb);
-  return () => { stateChangeListeners.delete(cb); };
+export function onStateChange(cb: () => void): () => void;
+export function onStateChange(type: "settings", cb: () => void): () => void;
+export function onStateChange(typeOrCb: "settings" | (() => void), cb?: () => void): () => void {
+  if(typeof typeOrCb === "function"){
+    stateChangeListeners.add(typeOrCb);
+    return () => { stateChangeListeners.delete(typeOrCb); };
+  }
+  settingsChangeListeners.add(cb!);
+  return () => { settingsChangeListeners.delete(cb!); };
 }
 
-function notifyStateChange(){
+type ChangeType = "settings" | "teeth" | "both";
+
+function notifyStateChange(type: ChangeType = "both"){
+  if(type === "settings" || type === "both"){
+    for(const cb of settingsChangeListeners){
+      try{ cb(); }
+      catch(e){ console.error("odontogram settings-change listener failed", e); }
+    }
+  }
+  // Bare state-change listeners always fire (backward compat)
   for(const cb of stateChangeListeners){
     try{ cb(); }
     catch(e){ console.error("odontogram state-change listener failed", e); }
   }
   // Redraw the multi-tooth bridge overlay after per-tooth renders settle.
-  // notifyStateChange() is synchronous and is always invoked at the END of a
-  // mutation batch (single edit :~1570, edentulous :~2298, import :~2850, init
-  // :~3753), so tile geometry is current by this point. renderBridgeOverlay is
-  // internally guarded, but wrap defensively so a geometry hiccup can never
-  // break state notification.
   try{ updateBridgeOverlay(); }
   catch(e){ console.error("odontogram bridge overlay render failed", e); }
 }
@@ -1295,6 +1375,7 @@ function onCardToggleClick(e: Any){
     applyToggleA11y(btn, "panel.controls", hidden);
     if(icon) icon.textContent = hidden ? "+" : "−";
     collapsedCards.controls = hidden;
+    notifyStateChange("settings");
     return;
   }
   const labelKey = CARD_TOGGLE_LABELS[btn.id];
@@ -1305,7 +1386,7 @@ function onCardToggleClick(e: Any){
   applyToggleA11y(btn, labelKey, collapsed);
   if(icon) icon.textContent = collapsed ? "+" : "−";
   collapsedCards[cardId] = collapsed;
-  notifyStateChange();
+  notifyStateChange("settings");
 }
 
 // Delegated handler for the global `setX(!current)` visibility toggles. A stable
@@ -7396,13 +7477,13 @@ let perioOverlayOpen = false;
 /** Open the perio-chart overlay. No-op (still notifies) if already open. */
 export function openPerioOverlay(): void {
   perioOverlayOpen = true;
-  notifyStateChange();
+  notifyStateChange("settings");
 }
 
 /** Close the perio-chart overlay. No-op (still notifies) if already closed. */
 export function closePerioOverlay(): void {
   perioOverlayOpen = false;
-  notifyStateChange();
+  notifyStateChange("settings");
 }
 
 /** Whether the perio-chart overlay is currently open. */
@@ -7431,7 +7512,7 @@ export function getPerioViewMode(): PerioViewMode {
 export function setPerioViewMode(mode: PerioViewMode): void {
   if(mode === perioViewMode) return;
   perioViewMode = mode;
-  notifyStateChange();
+  notifyStateChange("settings");
 }
 
 // ---- UI-2 Task 1: Settings -> Periodontal tab app-level preferences ----
@@ -7487,7 +7568,7 @@ export function getPerioRowVisibility(): Record<PerioRowId, boolean> {
 export function setPerioRowVisibility(id: PerioRowId, visible: boolean): void {
   if(perioRowVisibility[id] === visible) return;
   perioRowVisibility = { ...perioRowVisibility, [id]: visible };
-  notifyStateChange();
+  notifyStateChange("settings");
 }
 
 /** How perio-chart index row labels are rendered. */
@@ -7503,7 +7584,7 @@ export function getPerioIndexNameMode(): PerioIndexNameMode {
 export function setPerioIndexNameMode(mode: PerioIndexNameMode): void {
   if(mode === perioIndexNameMode) return;
   perioIndexNameMode = mode;
-  notifyStateChange();
+  notifyStateChange("settings");
 }
 
 // ---- Periodontal "Dental Chart" PG-B Task 2: the index-switcher overlay ----
@@ -7544,7 +7625,7 @@ export function getPerioOverlayLayer(): PerioOverlayLayer {
  *  redraws + the switcher's active state updates) even when unchanged. */
 export function setPerioOverlayLayer(layer: PerioOverlayLayer): void {
   perioOverlayLayer = layer;
-  notifyStateChange();
+  notifyStateChange("settings");
 }
 
 function downloadJson(payload: Any, filenamePrefix: string){
@@ -9105,6 +9186,7 @@ export function setNumberingSystem(system: NumberingSystem){
   numberingSystem = system;
   updateAllToothTileNumbers();
   updateActiveLabel();
+  notifyStateChange("settings");
 }
 
 /**
@@ -9620,7 +9702,9 @@ export function getOdontogramSummary(): OdontogramSummary {
  * @param value - `true` to enable read-only mode, `false` to disable.
  */
 export function setReadOnly(value: boolean){
-  readOnly = value;
+  const next = !!value;
+  if(next === readOnly) return;
+  readOnly = next;
   const grid = $("#toothGrid") as HTMLElement | null;
   if(grid) grid.classList.toggle("read-only", readOnly);
   const panel = $(".panel") as HTMLElement | null;
@@ -9641,6 +9725,7 @@ export function setReadOnly(value: boolean){
   $$(".tooth-tile[role='option']").forEach(tile => {
     tile.setAttribute("tabindex", readOnly ? "-1" : "0");
   });
+  notifyStateChange("settings");
 }
 
 /**
@@ -9658,12 +9743,15 @@ export function getReadOnly(): boolean{
  * @param value - `true` to enable notes, `false` to disable.
  */
 export function setNotesEnabled(value: boolean){
-  notesEnabled = value;
+  const next = !!value;
+  if(next === notesEnabled) return;
+  notesEnabled = next;
   // Refresh tooltips and label icons for all teeth
   for(const toothNo of ALL_TEETH){
     updateToothTooltip(toothNo);
     updateToothLabelNoteIcon(toothNo);
   }
+  notifyStateChange("settings");
 }
 
 /**
